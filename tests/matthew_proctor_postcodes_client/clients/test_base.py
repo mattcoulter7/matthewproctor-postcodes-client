@@ -16,14 +16,17 @@ class ExamplePostcodesClient(MatthewProctorPostcodesClient[dict[str, object]]):
     """Concrete test client for base client behavior."""
 
     database_type = MatthewProctorDatabaseType.AUS
-    database_url = "https://example.test/data/custom_postcodes.csv"
+    database_filename = "custom_postcodes.csv"
+    database_urls = ("https://example.test/data/custom_postcodes.csv",)
+    postcode_field_name = "postcode"
 
 
 class CustomPostcodeFieldClient(MatthewProctorPostcodesClient[dict[str, object]]):
     """Concrete test client with a non-standard postcode header."""
 
     database_type = MatthewProctorDatabaseType.NZL
-    database_url = "https://example.test/data/custom_field_postcodes.csv"
+    database_filename = "custom_field_postcodes.csv"
+    database_urls = ("https://example.test/data/custom_field_postcodes.csv",)
     postcode_field_name = "postal_code"
 
 
@@ -39,9 +42,9 @@ async def test_lookup_uses_local_file_and_returns_all_rows(tmp_path: Path) -> No
         encoding="utf-8",
     )
     client = ExamplePostcodesClient(
-        data_dir=tmp_path,
         download_if_missing=False,
     )
+    client.data_dir = tmp_path
 
     entries = await client.lookup("3004")
 
@@ -53,19 +56,21 @@ async def test_lookup_uses_local_file_and_returns_all_rows(tmp_path: Path) -> No
     assert entries[0]["dc"] == "MELBOURNE"
 
 
-def test_database_path_uses_filename_from_download_url(tmp_path: Path) -> None:
-    client = ExamplePostcodesClient(data_dir=tmp_path)
+def test_database_path_uses_explicit_database_filename(tmp_path: Path) -> None:
+    client = ExamplePostcodesClient()
+    client.data_dir = tmp_path
 
     assert client.database_path == tmp_path / "custom_postcodes.csv"
 
 
-def test_database_path_uses_filename_from_configured_source_url(tmp_path: Path) -> None:
-    client = ExamplePostcodesClient(
-        data_dir=tmp_path,
-        database_url="https://example.test/other/source.csv",
-    )
+def test_database_path_ignores_database_url_path_and_uses_configured_filename(tmp_path: Path) -> None:
+    class DifferentUrlSameFilenameClient(ExamplePostcodesClient):
+        database_urls = ("https://example.test/other/source.csv",)
 
-    assert client.database_path == tmp_path / "source.csv"
+    client = DifferentUrlSameFilenameClient()
+    client.data_dir = tmp_path
+
+    assert client.database_path == tmp_path / "custom_postcodes.csv"
 
 
 def test_default_data_dir_uses_environment_value(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -83,9 +88,9 @@ def test_default_data_dir_uses_package_default(monkeypatch: pytest.MonkeyPatch) 
 @pytest.mark.asyncio
 async def test_missing_baked_file_can_disable_download(tmp_path: Path) -> None:
     client = ExamplePostcodesClient(
-        data_dir=tmp_path,
         download_if_missing=False,
     )
+    client.data_dir = tmp_path
 
     with pytest.raises(DatasetUnavailableError):
         await client.lookup("3000")
@@ -93,16 +98,17 @@ async def test_missing_baked_file_can_disable_download(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 async def test_missing_file_can_be_downloaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    client = ExamplePostcodesClient(data_dir=tmp_path)
+    client = ExamplePostcodesClient()
+    client.data_dir = tmp_path
 
     async def fake_download(
         cls: type[ExamplePostcodesClient],
         *,
-        database_url: str,
+        database_urls: tuple[str, ...],
         destination: Path,
         timeout_seconds: float,
     ) -> None:
-        _ = (cls, database_url, timeout_seconds)
+        _ = (cls, database_urls, timeout_seconds)
         destination.write_text("postcode,locality\n3000,MELBOURNE\n", encoding="utf-8")
 
     monkeypatch.setattr(ExamplePostcodesClient, "_download_database", classmethod(fake_download))
@@ -122,7 +128,8 @@ async def test_missing_file_can_be_downloaded(monkeypatch: pytest.MonkeyPatch, t
 async def test_postcode_field_name_comes_from_class_configuration(tmp_path: Path) -> None:
     database = tmp_path / "custom_field_postcodes.csv"
     database.write_text("postal_code,locality\n0110,Abbey Caves\n", encoding="utf-8")
-    client = CustomPostcodeFieldClient(data_dir=tmp_path, download_if_missing=False)
+    client = CustomPostcodeFieldClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     entries = await client.lookup("110")
 
@@ -139,7 +146,8 @@ async def test_postcode_field_name_comes_from_class_configuration(tmp_path: Path
 async def test_extra_unheaded_columns_raise_dataset_format_error(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text("postcode,locality\n3000,MELBOURNE,extra\n", encoding="utf-8")
-    client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
+    client = ExamplePostcodesClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     with pytest.raises(DatasetFormatError):
         await client.lookup("3000")
@@ -149,7 +157,8 @@ async def test_extra_unheaded_columns_raise_dataset_format_error(tmp_path: Path)
 async def test_empty_csv_raises_dataset_format_error(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text("", encoding="utf-8")
-    client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
+    client = ExamplePostcodesClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     with pytest.raises(DatasetFormatError):
         await client.lookup("3000")
@@ -159,7 +168,8 @@ async def test_empty_csv_raises_dataset_format_error(tmp_path: Path) -> None:
 async def test_csv_without_postcode_column_raises_dataset_format_error(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text("locality\nMELBOURNE\n", encoding="utf-8")
-    client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
+    client = ExamplePostcodesClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     with pytest.raises(DatasetFormatError):
         await client.lookup("3000")
@@ -169,7 +179,8 @@ async def test_csv_without_postcode_column_raises_dataset_format_error(tmp_path:
 async def test_invalid_csv_postcode_raises_dataset_format_error(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text("postcode,locality\ninvalid,MELBOURNE\n", encoding="utf-8")
-    client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
+    client = ExamplePostcodesClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     with pytest.raises(DatasetFormatError):
         await client.lookup("3000")
@@ -179,7 +190,8 @@ async def test_invalid_csv_postcode_raises_dataset_format_error(tmp_path: Path) 
 async def test_blank_csv_postcode_rows_are_skipped(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text('postcode,locality\n,"MISSING"\n3000,"MELBOURNE"\n', encoding="utf-8")
-    client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
+    client = ExamplePostcodesClient(download_if_missing=False)
+    client.data_dir = tmp_path
 
     entries = await client.lookup("3000")
 
@@ -246,6 +258,7 @@ class FakeAsyncClient:
     """Minimal async client stand-in for download tests."""
 
     response = FakeResponse(b"postcode,locality\n3000,MELBOURNE\n")
+    requested_urls: list[str] = []
 
     def __init__(self, **kwargs: object) -> None:
         self.kwargs = kwargs
@@ -258,20 +271,23 @@ class FakeAsyncClient:
 
     async def get(self, source_url: str) -> FakeResponse:
         self.source_url = source_url
+        type(self).requested_urls.append(source_url)
         return self.response
 
 
 @pytest.mark.asyncio
 async def test_download_database_writes_response_content(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(base_module.httpx, "AsyncClient", FakeAsyncClient)
+    FakeAsyncClient.requested_urls = []
     destination = tmp_path / "custom_postcodes.csv"
 
     await ExamplePostcodesClient()._download_database(
-        database_url="https://example.test/custom_postcodes.csv",
+        database_urls=("https://example.test/custom_postcodes.csv",),
         destination=destination,
         timeout_seconds=1,
     )
 
+    assert FakeAsyncClient.requested_urls == ["https://example.test/custom_postcodes.csv"]
     assert destination.read_bytes() == b"postcode,locality\n3000,MELBOURNE\n"
 
 
@@ -281,11 +297,12 @@ async def test_download_database_raises_when_response_is_empty(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setattr(base_module.httpx, "AsyncClient", FakeAsyncClient)
+    FakeAsyncClient.requested_urls = []
     FakeAsyncClient.response = FakeResponse(b"")
 
     with pytest.raises(DatasetUnavailableError):
         await ExamplePostcodesClient()._download_database(
-            database_url="https://example.test/custom_postcodes.csv",
+            database_urls=("https://example.test/custom_postcodes.csv",),
             destination=tmp_path / "custom_postcodes.csv",
             timeout_seconds=1,
         )
@@ -299,11 +316,12 @@ async def test_download_database_wraps_http_errors(
     tmp_path: Path,
 ) -> None:
     monkeypatch.setattr(base_module.httpx, "AsyncClient", FakeAsyncClient)
+    FakeAsyncClient.requested_urls = []
     FakeAsyncClient.response = FakeResponse(b"", httpx.HTTPError("boom"))
 
     with pytest.raises(DatasetUnavailableError):
         await ExamplePostcodesClient()._download_database(
-            database_url="https://example.test/custom_postcodes.csv",
+            database_urls=("https://example.test/custom_postcodes.csv",),
             destination=tmp_path / "custom_postcodes.csv",
             timeout_seconds=1,
         )
@@ -311,10 +329,34 @@ async def test_download_database_wraps_http_errors(
     FakeAsyncClient.response = FakeResponse(b"postcode,locality\n3000,MELBOURNE\n")
 
 
-def test_client_configuration_rejects_mismatched_database() -> None:
-    client = ExamplePostcodesClient(database_url="https://example.test/reconfigured.csv")
+@pytest.mark.asyncio
+async def test_download_database_tries_next_url_when_first_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(base_module.httpx, "AsyncClient", FakeAsyncClient)
+    destination = tmp_path / "custom_postcodes.csv"
 
-    assert client.resolved_database_url == "https://example.test/reconfigured.csv"
+    responses = {
+        "https://example.test/first.csv": FakeResponse(b"", httpx.HTTPError("boom")),
+        "https://example.test/second.csv": FakeResponse(b"postcode,locality\n3000,MELBOURNE\n"),
+    }
+
+    async def fake_get(self: FakeAsyncClient, source_url: str) -> FakeResponse:
+        type(self).requested_urls.append(source_url)
+        return responses[source_url]
+
+    FakeAsyncClient.requested_urls = []
+    monkeypatch.setattr(FakeAsyncClient, "get", fake_get)
+
+    await ExamplePostcodesClient()._download_database(
+        database_urls=("https://example.test/first.csv", "https://example.test/second.csv"),
+        destination=destination,
+        timeout_seconds=1,
+    )
+
+    assert FakeAsyncClient.requested_urls == ["https://example.test/first.csv", "https://example.test/second.csv"]
+    assert destination.read_bytes() == b"postcode,locality\n3000,MELBOURNE\n"
 
 
 def test_request_timeout_must_be_positive() -> None:
