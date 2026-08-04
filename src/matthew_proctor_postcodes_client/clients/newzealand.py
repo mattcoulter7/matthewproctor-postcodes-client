@@ -11,7 +11,9 @@ class NZLMatthewProctorPostcodesClient(MatthewProctorPostcodesClient[NZLMatthewP
     """Client for the New Zealand postcode database."""
 
     database_type = MatthewProctorDatabaseType.NZL
-    database_url = (
-        "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/newzealand_postcodes.csv"
+    database_filename = "newzealand_postcodes.csv"
+    database_urls = (
+        "https://www.matthewproctor.com/Content/postcodes/newzealand_postcodes.csv",
+        "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/newzealand_postcodes.csv",
     )
     postcode_field_name = "postcode"

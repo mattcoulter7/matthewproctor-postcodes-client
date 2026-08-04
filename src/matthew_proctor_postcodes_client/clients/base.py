@@ -7,8 +7,7 @@ import os
 import tempfile
 from io import StringIO
 from pathlib import Path
-from typing import ClassVar
-from urllib.parse import urlsplit
+from typing import ClassVar, cast
 
 import aiofiles
 import aiofiles.os
@@ -39,13 +38,13 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
     """Generic client for one postcode database."""
 
     database_type: ClassVar[MatthewProctorDatabaseType]
-    database_url: ClassVar[str]
+    database_filename: ClassVar[str]
+    database_urls: ClassVar[tuple[str, ...]]
     postcode_field_name: ClassVar[str]
 
     def __init__(
         self,
         *,
-        data_dir: str | Path | None = None,
         request_timeout_seconds: float = 30.0,
         download_if_missing: bool = True,
     ) -> None:
@@ -53,14 +52,16 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         if request_timeout_seconds <= 0:
             raise ValueError("request_timeout_seconds must be greater than zero.")
 
-        self.data_dir = Path(data_dir).expanduser() if data_dir is not None else default_data_dir()
+        self.data_dir = default_data_dir()
         self.request_timeout_seconds = request_timeout_seconds
         self.download_if_missing = download_if_missing
 
     @property
     def database_path(self) -> Path:
         """Return the local CSV path for this client."""
-        return self.data_dir / Path(urlsplit(self.database_url).path).name
+        if not self.database_filename:
+            raise ValueError("database_filename must be configured for this client.")
+        return self.data_dir / self.database_filename
 
     async def lookup(self, postcode: str) -> list[R]:
         """Return every row matching ``postcode``.
@@ -71,8 +72,9 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         normalized_postcode = normalize_postcode(postcode)
         index = await type(self)._load_database_cached(
             database_type=self.database_type,
-            data_dir=str(self.data_dir.resolve()),
-            database_url=self.database_url,
+            data_dir=self.data_dir,
+            database_filename=self.database_filename,
+            database_urls=self.database_urls,
             postcode_field_name=self.postcode_field_name,
             download_if_missing=self.download_if_missing,
             request_timeout_seconds=self.request_timeout_seconds,
@@ -87,7 +89,8 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         *,
         database_type: MatthewProctorDatabaseType,
         data_dir: str,
-        database_url: str,
+        database_filename: str,
+        database_urls: tuple[str, ...],
         postcode_field_name: str,
         download_if_missing: bool,
         request_timeout_seconds: float,
@@ -96,7 +99,8 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         return await cls._load_database(
             database_type=database_type,
             data_dir=data_dir,
-            database_url=database_url,
+            database_filename=database_filename,
+            database_urls=database_urls,
             postcode_field_name=postcode_field_name,
             download_if_missing=download_if_missing,
             request_timeout_seconds=request_timeout_seconds,
@@ -108,18 +112,24 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         *,
         database_type: MatthewProctorDatabaseType,
         data_dir: str,
-        database_url: str,
+        database_filename: str,
+        database_urls: tuple[str, ...],
         postcode_field_name: str,
         download_if_missing: bool,
         request_timeout_seconds: float,
     ) -> DatabaseIndex:
         """Load and index a database once for each effective storage/source configuration."""
-        path = Path(data_dir) / Path(urlsplit(database_url).path).name
+        if not database_urls:
+            raise DatasetUnavailableError("No database URLs were configured for this client.")
+        if not database_filename:
+            raise DatasetUnavailableError("No database filename was configured for this client.")
+
+        path = Path(data_dir) / database_filename
         if not path.is_file():
             if not download_if_missing:
                 raise DatasetUnavailableError(f"Postcode database does not exist at {path} and downloads are disabled.")
             await cls._download_database(
-                database_url=database_url,
+                database_urls=database_urls,
                 destination=path,
                 timeout_seconds=request_timeout_seconds,
             )
@@ -134,26 +144,41 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
     async def _download_database(
         cls,
         *,
-        database_url: str,
+        database_urls: tuple[str, ...],
         destination: Path,
         timeout_seconds: float,
     ) -> None:
-        """Download a CSV and atomically persist it for subsequent process starts."""
+        """Download a CSV from configured URLs and atomically persist it."""
+        if not database_urls:
+            raise DatasetUnavailableError("No database URLs were configured for this client.")
+
         destination.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            async with httpx.AsyncClient(
-                follow_redirects=True,
-                timeout=timeout_seconds,
-            ) as client:
-                response = await client.get(database_url)
-                response.raise_for_status()
-        except httpx.HTTPError as error:
-            raise DatasetUnavailableError(f"Could not download postcode database from {database_url}.") from error
+        errors: list[str] = []
 
-        if not response.content:
-            raise DatasetUnavailableError(f"Downloaded postcode database from {database_url} was empty.")
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=timeout_seconds,
+        ) as client:
+            for database_url in database_urls:
+                try:
+                    response = await client.get(database_url)
+                    response.raise_for_status()
+                except httpx.HTTPError as error:
+                    errors.append(f"{database_url} ({error.__class__.__name__})")
+                    continue
 
-        await cls._atomic_write(destination, response.content)
+                if not response.content:
+                    errors.append(f"{database_url} (empty response)")
+                    continue
+
+                await cls._atomic_write(destination, response.content)
+                return
+
+        attempted_urls = ", ".join(database_urls)
+        details = "; ".join(errors) if errors else "no responses"
+        raise DatasetUnavailableError(
+            f"Could not download postcode database from configured URLs: {attempted_urls}. Details: {details}."
+        )
 
     @classmethod
     async def _atomic_write(cls, destination: Path, content: bytes) -> None:
@@ -203,7 +228,7 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
         if resolved_postcode_field_name not in reader.fieldnames:
             raise DatasetFormatError(f"Database {path} does not contain a {resolved_postcode_field_name} column.")
 
-        mutable_index: dict[str, list[DatabaseRow]] = {}
+        mutable_index: dict[str, list[MatthewProctorPostcodeInfo]] = {}
         for line_number, raw_row in enumerate(reader, start=2):
             if None in raw_row:
                 raise DatasetFormatError(f"Database {path} has extra unheaded columns on line {line_number}.")
@@ -224,6 +249,6 @@ class MatthewProctorPostcodesClient[R: MatthewProctorPostcodeInfo]:
                 ) from error
             row["database"] = resolved_database_type
             row[resolved_postcode_field_name] = postcode
-            mutable_index.setdefault(postcode, []).append(row)
+            mutable_index.setdefault(postcode, []).append(cast(MatthewProctorPostcodeInfo, row))
 
         return {postcode: tuple(rows) for postcode, rows in mutable_index.items()}

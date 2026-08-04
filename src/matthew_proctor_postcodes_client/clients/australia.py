@@ -11,7 +11,9 @@ class AUSMatthewProctorPostcodesClient(MatthewProctorPostcodesClient[AUSMatthewP
     """Client for the Australian postcode database."""
 
     database_type = MatthewProctorDatabaseType.AUS
-    database_url = (
-        "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/australian_postcodes.csv"
+    database_filename = "australian_postcodes.csv"
+    database_urls = (
+        "https://www.matthewproctor.com/Content/postcodes/australian_postcodes.csv",
+        "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/australian_postcodes.csv",
     )
     postcode_field_name = "postcode"
