@@ -42,7 +42,7 @@ make format
 - `AUSMatthewProctorPostcodesClient` returns `AUSMatthewProctorPostcodeInfo` rows.
 - `NZLMatthewProctorPostcodesClient` returns `NZLMatthewProctorPostcodeInfo` rows.
 - `lookup()` returns every locality for a postcode.
-- ISO alpha-3 country codes are required (`AUS`, `NZL`).
+- Choose the country-specific client explicitly (`AUSMatthewProctorPostcodesClient` or `NZLMatthewProctorPostcodesClient`).
 - A local CSV is preferred; a missing CSV is downloaded from GitHub and saved atomically.
 - The parsed postcode index is cached by `aiocache.cached(noself=True)`.
 - Row models are lightweight `TypedDict` types that use the known source CSV headers.
@@ -80,7 +80,7 @@ For an enterprise image, bake either CSV into that path and optionally configure
 from matthew_proctor_postcodes_client import AUSMatthewProctorPostcodesClient
 
 client = AUSMatthewProctorPostcodesClient()
-entries = await client.lookup(postcode="3004", country="AUS")
+entries = await client.lookup(postcode="3004")
 
 for entry in entries:
     print(entry["locality"], entry["RA_2021_NAME"])

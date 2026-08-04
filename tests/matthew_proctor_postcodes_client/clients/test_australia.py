@@ -5,5 +5,5 @@ from matthew_proctor_postcodes_client import (
 
 
 def test_australian_client_defines_database_and_default_url() -> None:
-    assert AUSMatthewProctorPostcodesClient.database == MatthewProctorDatabaseType.AUS
+    assert AUSMatthewProctorPostcodesClient.database_type == MatthewProctorDatabaseType.AUS
     assert AUSMatthewProctorPostcodesClient.database_url.endswith("/australian_postcodes.csv")

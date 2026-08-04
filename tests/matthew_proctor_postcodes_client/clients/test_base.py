@@ -5,11 +5,9 @@ import pytest
 
 import matthew_proctor_postcodes_client.clients.base as base_module
 from matthew_proctor_postcodes_client import (
-    CountryMismatchError,
     DatasetFormatError,
     DatasetUnavailableError,
     MatthewProctorDatabaseType,
-    UnsupportedCountryError,
 )
 from matthew_proctor_postcodes_client.clients.base import MatthewProctorPostcodesClient
 
@@ -17,8 +15,16 @@ from matthew_proctor_postcodes_client.clients.base import MatthewProctorPostcode
 class ExamplePostcodesClient(MatthewProctorPostcodesClient[dict[str, object]]):
     """Concrete test client for base client behavior."""
 
-    database = MatthewProctorDatabaseType.AUS
-    default_download_url = "https://example.test/data/custom_postcodes.csv"
+    database_type = MatthewProctorDatabaseType.AUS
+    database_url = "https://example.test/data/custom_postcodes.csv"
+
+
+class CustomPostcodeFieldClient(MatthewProctorPostcodesClient[dict[str, object]]):
+    """Concrete test client with a non-standard postcode header."""
+
+    database_type = MatthewProctorDatabaseType.NZL
+    database_url = "https://example.test/data/custom_field_postcodes.csv"
+    postcode_field_name = "postal_code"
 
 
 @pytest.mark.asyncio
@@ -37,7 +43,7 @@ async def test_lookup_uses_local_file_and_returns_all_rows(tmp_path: Path) -> No
         download_if_missing=False,
     )
 
-    entries = await client.lookup("3004", "AUS")
+    entries = await client.lookup("3004")
 
     assert [entry["locality"] for entry in entries] == [
         "MELBOURNE",
@@ -56,7 +62,7 @@ def test_database_path_uses_filename_from_download_url(tmp_path: Path) -> None:
 def test_database_path_uses_filename_from_configured_source_url(tmp_path: Path) -> None:
     client = ExamplePostcodesClient(
         data_dir=tmp_path,
-        source_url="https://example.test/other/source.csv",
+        database_url="https://example.test/other/source.csv",
     )
 
     assert client.database_path == tmp_path / "source.csv"
@@ -75,22 +81,6 @@ def test_default_data_dir_uses_package_default(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.asyncio
-async def test_country_must_match_client(tmp_path: Path) -> None:
-    client = ExamplePostcodesClient(data_dir=tmp_path)
-
-    with pytest.raises(CountryMismatchError):
-        await client.lookup("3000", "NZL")
-
-
-@pytest.mark.asyncio
-async def test_alpha_two_country_codes_are_not_supported(tmp_path: Path) -> None:
-    client = ExamplePostcodesClient(data_dir=tmp_path)
-
-    with pytest.raises(UnsupportedCountryError):
-        await client.lookup("3000", "AU")
-
-
-@pytest.mark.asyncio
 async def test_missing_baked_file_can_disable_download(tmp_path: Path) -> None:
     client = ExamplePostcodesClient(
         data_dir=tmp_path,
@@ -98,20 +88,26 @@ async def test_missing_baked_file_can_disable_download(tmp_path: Path) -> None:
     )
 
     with pytest.raises(DatasetUnavailableError):
-        await client.lookup("3000", "AUS")
+        await client.lookup("3000")
 
 
 @pytest.mark.asyncio
 async def test_missing_file_can_be_downloaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     client = ExamplePostcodesClient(data_dir=tmp_path)
 
-    async def fake_download(*, source_url: str, destination: Path, timeout_seconds: float) -> None:
-        _ = (source_url, timeout_seconds)
+    async def fake_download(
+        cls: type[ExamplePostcodesClient],
+        *,
+        database_url: str,
+        destination: Path,
+        timeout_seconds: float,
+    ) -> None:
+        _ = (cls, database_url, timeout_seconds)
         destination.write_text("postcode,locality\n3000,MELBOURNE\n", encoding="utf-8")
 
-    monkeypatch.setattr(client, "_download_database", fake_download)
+    monkeypatch.setattr(ExamplePostcodesClient, "_download_database", classmethod(fake_download))
 
-    entries = await client.lookup("3000", "AUS")
+    entries = await client.lookup("3000")
 
     assert entries == [
         {
@@ -123,13 +119,30 @@ async def test_missing_file_can_be_downloaded(monkeypatch: pytest.MonkeyPatch, t
 
 
 @pytest.mark.asyncio
+async def test_postcode_field_name_comes_from_class_configuration(tmp_path: Path) -> None:
+    database = tmp_path / "custom_field_postcodes.csv"
+    database.write_text("postal_code,locality\n0110,Abbey Caves\n", encoding="utf-8")
+    client = CustomPostcodeFieldClient(data_dir=tmp_path, download_if_missing=False)
+
+    entries = await client.lookup("110")
+
+    assert entries == [
+        {
+            "database": MatthewProctorDatabaseType.NZL,
+            "postal_code": "0110",
+            "locality": "Abbey Caves",
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_extra_unheaded_columns_raise_dataset_format_error(tmp_path: Path) -> None:
     database = tmp_path / "custom_postcodes.csv"
     database.write_text("postcode,locality\n3000,MELBOURNE,extra\n", encoding="utf-8")
     client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
 
     with pytest.raises(DatasetFormatError):
-        await client.lookup("3000", "AUS")
+        await client.lookup("3000")
 
 
 @pytest.mark.asyncio
@@ -139,7 +152,7 @@ async def test_empty_csv_raises_dataset_format_error(tmp_path: Path) -> None:
     client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
 
     with pytest.raises(DatasetFormatError):
-        await client.lookup("3000", "AUS")
+        await client.lookup("3000")
 
 
 @pytest.mark.asyncio
@@ -149,7 +162,7 @@ async def test_csv_without_postcode_column_raises_dataset_format_error(tmp_path:
     client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
 
     with pytest.raises(DatasetFormatError):
-        await client.lookup("3000", "AUS")
+        await client.lookup("3000")
 
 
 @pytest.mark.asyncio
@@ -159,7 +172,7 @@ async def test_invalid_csv_postcode_raises_dataset_format_error(tmp_path: Path) 
     client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
 
     with pytest.raises(DatasetFormatError):
-        await client.lookup("3000", "AUS")
+        await client.lookup("3000")
 
 
 @pytest.mark.asyncio
@@ -168,7 +181,7 @@ async def test_blank_csv_postcode_rows_are_skipped(tmp_path: Path) -> None:
     database.write_text('postcode,locality\n,"MISSING"\n3000,"MELBOURNE"\n', encoding="utf-8")
     client = ExamplePostcodesClient(data_dir=tmp_path, download_if_missing=False)
 
-    entries = await client.lookup("3000", "AUS")
+    entries = await client.lookup("3000")
 
     assert len(entries) == 1
     assert entries[0]["locality"] == "MELBOURNE"
@@ -254,7 +267,7 @@ async def test_download_database_writes_response_content(monkeypatch: pytest.Mon
     destination = tmp_path / "custom_postcodes.csv"
 
     await ExamplePostcodesClient()._download_database(
-        source_url="https://example.test/custom_postcodes.csv",
+        database_url="https://example.test/custom_postcodes.csv",
         destination=destination,
         timeout_seconds=1,
     )
@@ -272,7 +285,7 @@ async def test_download_database_raises_when_response_is_empty(
 
     with pytest.raises(DatasetUnavailableError):
         await ExamplePostcodesClient()._download_database(
-            source_url="https://example.test/custom_postcodes.csv",
+            database_url="https://example.test/custom_postcodes.csv",
             destination=tmp_path / "custom_postcodes.csv",
             timeout_seconds=1,
         )
@@ -290,7 +303,7 @@ async def test_download_database_wraps_http_errors(
 
     with pytest.raises(DatasetUnavailableError):
         await ExamplePostcodesClient()._download_database(
-            source_url="https://example.test/custom_postcodes.csv",
+            database_url="https://example.test/custom_postcodes.csv",
             destination=tmp_path / "custom_postcodes.csv",
             timeout_seconds=1,
         )
@@ -299,8 +312,9 @@ async def test_download_database_wraps_http_errors(
 
 
 def test_client_configuration_rejects_mismatched_database() -> None:
-    with pytest.raises(CountryMismatchError):
-        ExamplePostcodesClient(database="NZL")
+    client = ExamplePostcodesClient(database_url="https://example.test/reconfigured.csv")
+
+    assert client.resolved_database_url == "https://example.test/reconfigured.csv"
 
 
 def test_request_timeout_must_be_positive() -> None:
