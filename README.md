@@ -56,11 +56,11 @@ make format
 
 ## Behaviour
 
-- `lookup_postcode("3004", "AUS")` returns `AUSMatthewProctorPostcodeInfo` rows.
-- `lookup_postcode("110", "NZL")` returns `NZLMatthewProctorPostcodeInfo` rows.
+- `lookup_postcode("3004", "AUS")` returns a read-only sequence of `AUSMatthewProctorPostcodeInfo` rows.
+- `lookup_postcode("110", "NZL")` returns a read-only sequence of `NZLMatthewProctorPostcodeInfo` rows.
 - Country codes are normalized to uppercase alpha-3 values.
 - A lookup returns every locality for a postcode.
-- Unknown but well-formed postcodes return an empty list.
+- Unknown but well-formed postcodes return an empty sequence.
 - Postcodes are normalized to four decimal digits, so `"110"` is looked up as `"0110"`.
 - Invalid postcodes raise `InvalidPostcodeError`; values must be one to four decimal digits.
 - Unsupported countries raise `UnsupportedCountryError`.
@@ -114,6 +114,14 @@ print([entry["locality"] for entry in aus_entries])
 print([entry["locality"] for entry in nz_entries])
 ```
 
+`lookup_postcode()` is the top-level public API and returns a `collections.abc.Sequence` so callers
+can safely consume country-specific row types through the shared `MatthewProctorPostcodeInfo` union.
+Convert it with `list(...)` if your code needs to mutate or serialize a concrete list object:
+
+```python
+entries = list(lookup_postcode("3004", "AUS"))
+```
+
 ## Lookup Options
 
 `lookup_postcode()` accepts these keyword arguments:
@@ -149,6 +157,9 @@ Exception classes and lower-level helpers are available from their owning module
 from matthew_proctor_postcodes_client.exceptions import DatasetDownloadError
 from matthew_proctor_postcodes_client.normalization import normalize_postcode
 ```
+
+Database classes are available from `matthew_proctor_postcodes_client.databases` for advanced use,
+and `MatthewProctorDatabaseType` is available from `matthew_proctor_postcodes_client.models`.
 
 `DatasetDownloadError` is an `ExceptionGroup`, so callers can either handle the whole download
 failure or selectively handle grouped source failures:
@@ -186,6 +197,8 @@ postcode,locality,region,long,lat,territory,island
 
 The source datasets may add fields over time. Unknown extra CSV fields are preserved in returned
 row dictionaries, while the exported `TypedDict` models document the fields known by this package.
+Returned rows also include a `database` field injected by this package with the source
+`MatthewProctorDatabaseType`.
 
 ## Development
 
