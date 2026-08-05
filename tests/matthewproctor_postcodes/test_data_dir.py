@@ -7,5 +7,5 @@ from matthewproctor_postcodes.data_dir import (
 
 
 def test_constants_define_default_storage_location() -> None:
-    assert DATA_DIR_ENV_VAR == "matthewproctor_DATA_DIR"
+    assert DATA_DIR_ENV_VAR == "MATTHEWPROCTOR_POSTCODES"
     assert DEFAULT_DATA_DIR == Path("data/matthewproctor")

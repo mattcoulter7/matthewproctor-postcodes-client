@@ -41,7 +41,7 @@ def test_lookup_uses_local_file_and_returns_all_rows(monkeypatch: pytest.MonkeyP
         '"Delivery Area","Updated","20605","Port Phillip","20"\n',
         encoding="utf-8",
     )
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     entries = ExamplePostcodesDatabase().lookup("3004", download_if_missing=False)
 
@@ -54,7 +54,7 @@ def test_lookup_uses_local_file_and_returns_all_rows(monkeypatch: pytest.MonkeyP
 
 
 def test_database_path_uses_explicit_database_filename(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     assert ExamplePostcodesDatabase().database_path == tmp_path / "custom_postcodes.csv"
 
@@ -66,13 +66,13 @@ def test_database_path_ignores_database_url_path_and_uses_configured_filename(
     class DifferentUrlSameFilenameDatabase(ExamplePostcodesDatabase):
         database_urls = ("https://example.test/other/source.csv",)
 
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     assert DifferentUrlSameFilenameDatabase().database_path == tmp_path / "custom_postcodes.csv"
 
 
 def test_missing_baked_file_can_disable_download(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
     database = ExamplePostcodesDatabase()
 
     with pytest.raises(DatasetUnavailableError):
@@ -85,7 +85,7 @@ def test_failed_no_download_call_does_not_poison_later_download(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
     database = ExamplePostcodesDatabase()
 
     with pytest.raises(DatasetUnavailableError):
@@ -109,7 +109,7 @@ def test_failed_no_download_call_does_not_poison_later_download(
 def test_loaded_database_ignores_later_lifecycle_options(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     database_path = tmp_path / "custom_postcodes.csv"
     database_path.write_text("postcode,locality\n3000,MELBOURNE\n", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     database = ExamplePostcodesDatabase()
     assert database.lookup("3000", download_if_missing=False) != []
@@ -120,7 +120,7 @@ def test_loaded_database_ignores_later_lifecycle_options(monkeypatch: pytest.Mon
 
 
 def test_missing_file_can_be_downloaded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
     database = ExamplePostcodesDatabase()
 
     def fake_download(*, destination: Path, timeout_seconds: float) -> None:
@@ -144,7 +144,7 @@ def test_postcode_field_name_comes_from_class_configuration(
 ) -> None:
     database_path = tmp_path / "custom_field_postcodes.csv"
     database_path.write_text("postal_code,locality\n0110,Abbey Caves\n", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     entries = CustomPostcodeFieldDatabase().lookup("110", download_if_missing=False)
 
@@ -162,7 +162,7 @@ def test_extra_unheaded_columns_raise_dataset_format_error(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "custom_postcodes.csv").write_text("postcode,locality\n3000,MELBOURNE,extra\n", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     with pytest.raises(DatasetFormatError):
         ExamplePostcodesDatabase().lookup("3000", download_if_missing=False)
@@ -170,7 +170,7 @@ def test_extra_unheaded_columns_raise_dataset_format_error(
 
 def test_empty_csv_raises_dataset_format_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     (tmp_path / "custom_postcodes.csv").write_text("", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     with pytest.raises(DatasetFormatError):
         ExamplePostcodesDatabase().lookup("3000", download_if_missing=False)
@@ -181,7 +181,7 @@ def test_csv_without_postcode_column_raises_dataset_format_error(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "custom_postcodes.csv").write_text("locality\nMELBOURNE\n", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     with pytest.raises(DatasetFormatError):
         ExamplePostcodesDatabase().lookup("3000", download_if_missing=False)
@@ -192,7 +192,7 @@ def test_invalid_csv_postcode_raises_dataset_format_error(
     tmp_path: Path,
 ) -> None:
     (tmp_path / "custom_postcodes.csv").write_text("postcode,locality\ninvalid,MELBOURNE\n", encoding="utf-8")
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     with pytest.raises(DatasetFormatError):
         ExamplePostcodesDatabase().lookup("3000", download_if_missing=False)
@@ -203,7 +203,7 @@ def test_blank_csv_postcode_rows_are_skipped(monkeypatch: pytest.MonkeyPatch, tm
         'postcode,locality\n,"MISSING"\n3000,"MELBOURNE"\n',
         encoding="utf-8",
     )
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     entries = ExamplePostcodesDatabase().lookup("3000", download_if_missing=False)
 
@@ -402,7 +402,7 @@ def test_download_database_tries_next_url_when_first_fails(
 
 
 def test_request_timeout_must_be_positive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("matthewproctor_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("MATTHEWPROCTOR_POSTCODES", str(tmp_path))
 
     with pytest.raises(ValueError):
         ExamplePostcodesDatabase().lookup("3000", request_timeout_seconds=0)

@@ -84,10 +84,10 @@ uv sync --refresh
 
 ## Storage
 
-Set `matthewproctor_DATA_DIR` to control where files are read and downloaded:
+Set `MATTHEWPROCTOR_POSTCODES` to control where files are read and downloaded:
 
 ```bash
-export matthewproctor_DATA_DIR=data/matthewproctor
+export MATTHEWPROCTOR_POSTCODES=data/matthewproctor
 ```
 
 This produces:
@@ -129,14 +129,14 @@ entries = list(lookup_postcode("3004", "AUS"))
 - `request_timeout_seconds`: HTTP timeout used when a missing CSV must be downloaded. Defaults to `30.0`.
 - `download_if_missing`: whether to download the source CSV when it is not already present locally. Defaults to `True`.
 
-Storage is configured with `matthewproctor_DATA_DIR`:
+Storage is configured with `MATTHEWPROCTOR_POSTCODES`:
 
 ```python
 import os
 
 from matthewproctor_postcodes import lookup_postcode
 
-os.environ["matthewproctor_DATA_DIR"] = "/app/data/matthewproctor"
+os.environ["MATTHEWPROCTOR_POSTCODES"] = "/app/data/matthewproctor"
 
 entries = lookup_postcode(
     "3004",
