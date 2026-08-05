@@ -1,4 +1,4 @@
-import matthew_proctor_postcodes_client.databases as databases
+import matthewproctor_postcodes.databases as databases
 
 
 def test_databases_exports_database_types() -> None:

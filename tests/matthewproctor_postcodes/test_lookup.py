@@ -1,8 +1,8 @@
 import pytest
 
-import matthew_proctor_postcodes_client as package
-from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+import matthewproctor_postcodes.lookup as package
+from matthewproctor_postcodes.exceptions import UnsupportedCountryError
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
 
 
 class RecordingDatabase:
@@ -28,7 +28,7 @@ class RecordingDatabase:
 
 def test_lookup_postcode_routes_to_normalized_country(monkeypatch: pytest.MonkeyPatch) -> None:
     database = RecordingDatabase()
-    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.AUS: database})
+    monkeypatch.setattr(package, "_DATABASES_INDEX", {MatthewProctorDatabaseType.AUS: database})
 
     assert package.lookup_postcode("3000", " aus ") == [{"postcode": "3000"}]
     assert database.calls == [
@@ -42,7 +42,7 @@ def test_lookup_postcode_routes_to_normalized_country(monkeypatch: pytest.Monkey
 
 def test_lookup_postcode_forwards_lifecycle_options(monkeypatch: pytest.MonkeyPatch) -> None:
     database = RecordingDatabase()
-    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.NZL: database})
+    monkeypatch.setattr(package, "_DATABASES_INDEX", {MatthewProctorDatabaseType.NZL: database})
 
     package.lookup_postcode(
         "110",
@@ -63,10 +63,3 @@ def test_lookup_postcode_forwards_lifecycle_options(monkeypatch: pytest.MonkeyPa
 def test_lookup_postcode_rejects_unsupported_country() -> None:
     with pytest.raises(UnsupportedCountryError):
         package.lookup_postcode("3000", "USA")
-
-
-def test_package_does_not_export_database_objects() -> None:
-    assert "AUSMatthewProctorPostcodesDatabase" not in package.__all__
-    assert "MatthewProctorPostcodesDatabase" not in package.__all__
-    assert "NZLMatthewProctorPostcodesDatabase" not in package.__all__
-    assert "_DATABASES" not in package.__all__

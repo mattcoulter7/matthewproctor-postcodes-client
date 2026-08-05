@@ -1,4 +1,4 @@
-import matthew_proctor_postcodes_client.models as models
+import matthewproctor_postcodes.models as models
 
 
 def test_models_exports_public_types() -> None:

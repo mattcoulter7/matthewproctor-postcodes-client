@@ -1,5 +1,5 @@
-from matthew_proctor_postcodes_client.databases import AUSMatthewProctorPostcodesDatabase
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+from matthewproctor_postcodes.databases import AUSMatthewProctorPostcodesDatabase
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
 
 
 def test_australian_database_defines_database_and_default_url() -> None:

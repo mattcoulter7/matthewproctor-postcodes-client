@@ -2,7 +2,7 @@ from enum import StrEnum
 
 import pytest
 
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
 
 
 def test_database_type_is_strenum() -> None:

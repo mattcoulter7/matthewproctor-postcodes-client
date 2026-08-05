@@ -13,14 +13,14 @@ from typing import ClassVar, cast
 
 import httpx
 
-from matthew_proctor_postcodes_client.constants import default_data_dir
-from matthew_proctor_postcodes_client.exceptions import (
+from matthewproctor_postcodes.data_dir import default_data_dir
+from matthewproctor_postcodes.exceptions import (
     DatasetDownloadError,
     DatasetFormatError,
     DatasetUnavailableError,
 )
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType, MatthewProctorPostcodeInfo
-from matthew_proctor_postcodes_client.utils import normalize_postcode
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType, MatthewProctorPostcodeInfo
+from matthewproctor_postcodes.normalization import normalize_postcode
 
 type DatabaseIndex[R] = dict[str, tuple[R, ...]]
 
@@ -163,7 +163,8 @@ class MatthewProctorPostcodesDatabase[R: MatthewProctorPostcodeInfo](ABC):
     def _read_database(self, path: Path) -> DatabaseIndex[R]:
         """Parse a CSV and construct a postcode-to-rows index."""
         try:
-            contents = path.read_text(encoding="utf-8-sig", newline="")
+            with path.open(encoding="utf-8-sig", newline="") as file:
+                contents = file.read()
         except OSError as error:
             raise DatasetUnavailableError(f"Could not read postcode database {path}.") from error
         except UnicodeError as error:

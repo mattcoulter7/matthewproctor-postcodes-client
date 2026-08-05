@@ -1,5 +1,5 @@
-from matthew_proctor_postcodes_client.databases import NZLMatthewProctorPostcodesDatabase
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+from matthewproctor_postcodes.databases import NZLMatthewProctorPostcodesDatabase
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
 
 
 def test_new_zealand_database_defines_database_and_default_url() -> None:

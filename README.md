@@ -1,6 +1,6 @@
 <div align="center">
 
-# Matthew Proctor Postcodes Client
+# Matthew Proctor Postcodes
 
 Typed Python 3.12+ lookup API for Matthew Proctor Australian and New Zealand postcode CSV datasets.
 
@@ -11,8 +11,8 @@ Typed Python 3.12+ lookup API for Matthew Proctor Australian and New Zealand pos
 ![Pytest](https://img.shields.io/badge/Pytest-Unit-08979C?style=for-the-badge)
 ![PyPI](https://img.shields.io/badge/PyPI-Publish-6E40C9?style=for-the-badge)
 
-[![Package CI](https://github.com/mattcoulter7/matthewproctor-postcodes-client/actions/workflows/package-ci.yaml/badge.svg?branch=main)](https://github.com/mattcoulter7/matthewproctor-postcodes-client/actions/workflows/package-ci.yaml)
-[![Package CD](https://github.com/mattcoulter7/matthewproctor-postcodes-client/actions/workflows/package-cd.yaml/badge.svg?branch=main)](https://github.com/mattcoulter7/matthewproctor-postcodes-client/actions/workflows/package-cd.yaml)
+[![Package CI](https://github.com/mattcoulter7/matthewproctor-postcodes/actions/workflows/package-ci.yaml/badge.svg?branch=main)](https://github.com/mattcoulter7/matthewproctor-postcodes/actions/workflows/package-ci.yaml)
+[![Package CD](https://github.com/mattcoulter7/matthewproctor-postcodes/actions/workflows/package-cd.yaml/badge.svg?branch=main)](https://github.com/mattcoulter7/matthewproctor-postcodes/actions/workflows/package-cd.yaml)
 
 </div>
 
@@ -21,13 +21,13 @@ Typed Python 3.12+ lookup API for Matthew Proctor Australian and New Zealand pos
 Install the package:
 
 ```shell
-pip install matthew-proctor-postcodes-client
+pip install matthewproctor-postcodes
 ```
 
 Look up a postcode:
 
 ```python
-from matthew_proctor_postcodes_client import lookup_postcode
+from matthewproctor_postcodes import lookup_postcode
 
 entries = lookup_postcode("3004", "AUS")
 
@@ -56,11 +56,11 @@ make format
 
 ## Behaviour
 
-- `lookup_postcode("3004", "AUS")` returns `AUSMatthewProctorPostcodeInfo` rows.
-- `lookup_postcode("110", "NZL")` returns `NZLMatthewProctorPostcodeInfo` rows.
+- `lookup_postcode("3004", "AUS")` returns a read-only sequence of `AUSMatthewProctorPostcodeInfo` rows.
+- `lookup_postcode("110", "NZL")` returns a read-only sequence of `NZLMatthewProctorPostcodeInfo` rows.
 - Country codes are normalized to uppercase alpha-3 values.
 - A lookup returns every locality for a postcode.
-- Unknown but well-formed postcodes return an empty list.
+- Unknown but well-formed postcodes return an empty sequence.
 - Postcodes are normalized to four decimal digits, so `"110"` is looked up as `"0110"`.
 - Invalid postcodes raise `InvalidPostcodeError`; values must be one to four decimal digits.
 - Unsupported countries raise `UnsupportedCountryError`.
@@ -73,7 +73,7 @@ make format
 ## Installation
 
 ```bash
-pip install matthew-proctor-postcodes-client
+pip install matthewproctor-postcodes
 ```
 
 For local development from a checkout:
@@ -84,10 +84,10 @@ uv sync --refresh
 
 ## Storage
 
-Set `MATTHEW_PROCTOR_DATA_DIR` to control where files are read and downloaded:
+Set `matthewproctor_DATA_DIR` to control where files are read and downloaded:
 
 ```bash
-export MATTHEW_PROCTOR_DATA_DIR=data/matthewproctor
+export matthewproctor_DATA_DIR=data/matthewproctor
 ```
 
 This produces:
@@ -105,13 +105,21 @@ For an enterprise image, bake either CSV into that path and pass `download_if_mi
 ## Usage
 
 ```python
-from matthew_proctor_postcodes_client import lookup_postcode
+from matthewproctor_postcodes import lookup_postcode
 
 aus_entries = lookup_postcode("3004", "AUS")
 nz_entries = lookup_postcode("110", "NZL")
 
 print([entry["locality"] for entry in aus_entries])
 print([entry["locality"] for entry in nz_entries])
+```
+
+`lookup_postcode()` is the top-level public API and returns a `collections.abc.Sequence` so callers
+can safely consume country-specific row types through the shared `MatthewProctorPostcodeInfo` union.
+Convert it with `list(...)` if your code needs to mutate or serialize a concrete list object:
+
+```python
+entries = list(lookup_postcode("3004", "AUS"))
 ```
 
 ## Lookup Options
@@ -121,14 +129,14 @@ print([entry["locality"] for entry in nz_entries])
 - `request_timeout_seconds`: HTTP timeout used when a missing CSV must be downloaded. Defaults to `30.0`.
 - `download_if_missing`: whether to download the source CSV when it is not already present locally. Defaults to `True`.
 
-Storage is configured with `MATTHEW_PROCTOR_DATA_DIR`:
+Storage is configured with `matthewproctor_DATA_DIR`:
 
 ```python
 import os
 
-from matthew_proctor_postcodes_client import lookup_postcode
+from matthewproctor_postcodes import lookup_postcode
 
-os.environ["MATTHEW_PROCTOR_DATA_DIR"] = "/app/data/matthewproctor"
+os.environ["matthewproctor_DATA_DIR"] = "/app/data/matthewproctor"
 
 entries = lookup_postcode(
     "3004",
@@ -146,9 +154,12 @@ still load it.
 Exception classes and lower-level helpers are available from their owning modules:
 
 ```python
-from matthew_proctor_postcodes_client.exceptions import DatasetDownloadError
-from matthew_proctor_postcodes_client.utils import normalize_postcode
+from matthewproctor_postcodes.exceptions import DatasetDownloadError
+from matthewproctor_postcodes.normalization import normalize_postcode
 ```
+
+Database classes are available from `matthewproctor_postcodes.databases` for advanced use,
+and `MatthewProctorDatabaseType` is available from `matthewproctor_postcodes.models`.
 
 `DatasetDownloadError` is an `ExceptionGroup`, so callers can either handle the whole download
 failure or selectively handle grouped source failures:
@@ -186,6 +197,8 @@ postcode,locality,region,long,lat,territory,island
 
 The source datasets may add fields over time. Unknown extra CSV fields are preserved in returned
 row dictionaries, while the exported `TypedDict` models document the fields known by this package.
+Returned rows also include a `database` field injected by this package with the source
+`MatthewProctorDatabaseType`.
 
 ## Development
 
