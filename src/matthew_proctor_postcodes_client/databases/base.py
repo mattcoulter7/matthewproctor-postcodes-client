@@ -13,14 +13,14 @@ from typing import ClassVar, cast
 
 import httpx
 
-from matthew_proctor_postcodes_client.constants import default_data_dir
+from matthew_proctor_postcodes_client.data_dir import default_data_dir
 from matthew_proctor_postcodes_client.exceptions import (
     DatasetDownloadError,
     DatasetFormatError,
     DatasetUnavailableError,
 )
 from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType, MatthewProctorPostcodeInfo
-from matthew_proctor_postcodes_client.utils import normalize_postcode
+from matthew_proctor_postcodes_client.normalization import normalize_postcode
 
 type DatabaseIndex[R] = dict[str, tuple[R, ...]]
 

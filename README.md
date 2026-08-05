@@ -147,7 +147,7 @@ Exception classes and lower-level helpers are available from their owning module
 
 ```python
 from matthew_proctor_postcodes_client.exceptions import DatasetDownloadError
-from matthew_proctor_postcodes_client.utils import normalize_postcode
+from matthew_proctor_postcodes_client.normalization import normalize_postcode
 ```
 
 `DatasetDownloadError` is an `ExceptionGroup`, so callers can either handle the whole download
