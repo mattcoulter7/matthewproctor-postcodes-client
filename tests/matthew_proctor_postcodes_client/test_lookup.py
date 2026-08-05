@@ -28,7 +28,7 @@ class RecordingDatabase:
 
 def test_lookup_postcode_routes_to_normalized_country(monkeypatch: pytest.MonkeyPatch) -> None:
     database = RecordingDatabase()
-    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.AUS: database})
+    monkeypatch.setattr(package, "_DATABASES_INDEX", {MatthewProctorDatabaseType.AUS: database})
 
     assert package.lookup_postcode("3000", " aus ") == [{"postcode": "3000"}]
     assert database.calls == [
@@ -42,7 +42,7 @@ def test_lookup_postcode_routes_to_normalized_country(monkeypatch: pytest.Monkey
 
 def test_lookup_postcode_forwards_lifecycle_options(monkeypatch: pytest.MonkeyPatch) -> None:
     database = RecordingDatabase()
-    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.NZL: database})
+    monkeypatch.setattr(package, "_DATABASES_INDEX", {MatthewProctorDatabaseType.NZL: database})
 
     package.lookup_postcode(
         "110",
