@@ -16,8 +16,8 @@ from matthew_proctor_postcodes_client.models import (
     MatthewProctorPostcodeInfo,
     NZLMatthewProctorPostcodeInfo,
 )
-from .lookup import lookup_postcode
 
+from .lookup import lookup_postcode
 
 __all__ = [
     "AUSMatthewProctorPostcodeInfo",

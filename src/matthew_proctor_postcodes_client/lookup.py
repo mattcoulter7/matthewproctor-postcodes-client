@@ -1,18 +1,15 @@
 """Matthew Proctor postcode lookup API."""
 
-from typing import Literal, cast, overload
+from collections.abc import Sequence
 
 from matthew_proctor_postcodes_client.databases import (
     AUSMatthewProctorPostcodesDatabase,
-    MatthewProctorPostcodesDatabase,
     NZLMatthewProctorPostcodesDatabase,
 )
 from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
 from matthew_proctor_postcodes_client.models import (
-    AUSMatthewProctorPostcodeInfo,
     MatthewProctorDatabaseType,
     MatthewProctorPostcodeInfo,
-    NZLMatthewProctorPostcodeInfo,
 )
 
 _DATABASES = [
@@ -20,10 +17,8 @@ _DATABASES = [
     NZLMatthewProctorPostcodesDatabase(),
 ]
 
-_DATABASES_INDEX = {
-    database.database_type: database
-    for database in _DATABASES
-}
+_DATABASES_INDEX = {database.database_type: database for database in _DATABASES}
+
 
 def lookup_postcode(
     postcode: str,
@@ -31,7 +26,7 @@ def lookup_postcode(
     *,
     request_timeout_seconds: float = 30.0,
     download_if_missing: bool = True,
-) -> list[MatthewProctorPostcodeInfo]:
+) -> Sequence[MatthewProctorPostcodeInfo]:
     """Look up postcode rows within a supported alpha-3 country."""
     try:
         database_type = MatthewProctorDatabaseType(country.strip().upper())

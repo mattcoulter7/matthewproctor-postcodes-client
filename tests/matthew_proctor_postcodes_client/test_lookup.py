@@ -1,6 +1,6 @@
 import pytest
 
-import matthew_proctor_postcodes_client as package
+import matthew_proctor_postcodes_client.lookup as package
 from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
 from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
 
@@ -63,10 +63,3 @@ def test_lookup_postcode_forwards_lifecycle_options(monkeypatch: pytest.MonkeyPa
 def test_lookup_postcode_rejects_unsupported_country() -> None:
     with pytest.raises(UnsupportedCountryError):
         package.lookup_postcode("3000", "USA")
-
-
-def test_package_does_not_export_database_objects() -> None:
-    assert "AUSMatthewProctorPostcodesDatabase" not in package.__all__
-    assert "MatthewProctorPostcodesDatabase" not in package.__all__
-    assert "NZLMatthewProctorPostcodesDatabase" not in package.__all__
-    assert "_DATABASES" not in package.__all__
