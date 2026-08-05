@@ -1,4 +1,4 @@
-"""Small utility helpers for postcode clients."""
+"""Small utility helpers for postcode lookups."""
 
 from __future__ import annotations
 

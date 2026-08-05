@@ -1,4 +1,8 @@
-"""Exceptions raised by the Matthew Proctor postcodes client."""
+"""Exceptions raised by Matthew Proctor postcode lookups."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
 
 
 class MatthewProctorPostcodesError(Exception):
@@ -13,12 +17,16 @@ class UnsupportedCountryError(MatthewProctorPostcodesError, ValueError):
     """Raised when a country cannot be mapped to an available database."""
 
 
-class CountryMismatchError(MatthewProctorPostcodesError, ValueError):
-    """Raised when a lookup country does not match the configured client database."""
-
-
 class DatasetUnavailableError(MatthewProctorPostcodesError):
     """Raised when a database is missing and cannot or must not be downloaded."""
+
+
+class DatasetDownloadError(ExceptionGroup, MatthewProctorPostcodesError):
+    """Raised when every configured dataset source fails."""
+
+    def derive(self, exceptions: Sequence[Exception]) -> DatasetDownloadError:
+        """Preserve this exception type during ``except*`` splitting."""
+        return type(self)(self.message, list(exceptions))
 
 
 class DatasetFormatError(MatthewProctorPostcodesError):

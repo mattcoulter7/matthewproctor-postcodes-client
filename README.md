@@ -2,7 +2,7 @@
 
 # Matthew Proctor Postcodes Client
 
-Async, typed Python 3.12+ client for Matthew Proctor Australian and New Zealand postcode CSV datasets.
+Typed Python 3.12+ lookup API for Matthew Proctor Australian and New Zealand postcode CSV datasets.
 
 ![Python](https://img.shields.io/badge/Python-3.12+-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![UV](https://img.shields.io/badge/UV-Fast-6E40C9?style=for-the-badge)
@@ -24,23 +24,15 @@ Install the package:
 pip install matthew-proctor-postcodes-client
 ```
 
-Use the async clients:
+Look up a postcode:
 
 ```python
-import asyncio
+from matthew_proctor_postcodes_client import lookup_postcode
 
-from matthew_proctor_postcodes_client import AUSMatthewProctorPostcodesClient
+entries = lookup_postcode("3004", "AUS")
 
-
-async def main() -> None:
-    client = AUSMatthewProctorPostcodesClient()
-    entries = await client.lookup("3004")
-
-    for entry in entries:
-        print(entry["locality"], entry.get("RA_2021_NAME"))
-
-
-asyncio.run(main())
+for entry in entries:
+    print(entry["locality"], entry.get("RA_2021_NAME"))
 ```
 
 Install development dependencies:
@@ -64,15 +56,18 @@ make format
 
 ## Behaviour
 
-- `AUSMatthewProctorPostcodesClient` returns `AUSMatthewProctorPostcodeInfo` rows.
-- `NZLMatthewProctorPostcodesClient` returns `NZLMatthewProctorPostcodeInfo` rows.
-- `lookup()` returns every locality for a postcode.
+- `lookup_postcode("3004", "AUS")` returns `AUSMatthewProctorPostcodeInfo` rows.
+- `lookup_postcode("110", "NZL")` returns `NZLMatthewProctorPostcodeInfo` rows.
+- Country codes are normalized to uppercase alpha-3 values.
+- A lookup returns every locality for a postcode.
 - Unknown but well-formed postcodes return an empty list.
 - Postcodes are normalized to four decimal digits, so `"110"` is looked up as `"0110"`.
 - Invalid postcodes raise `InvalidPostcodeError`; values must be one to four decimal digits.
-- Choose the country-specific client explicitly (`AUSMatthewProctorPostcodesClient` or `NZLMatthewProctorPostcodesClient`).
-- A local CSV is preferred; a missing CSV is downloaded from GitHub and saved atomically.
-- The parsed postcode index is cached by `aiocache.cached(noself=True)`.
+- Unsupported countries raise `UnsupportedCountryError`.
+- Failed downloads from every configured source raise `DatasetDownloadError`, preserving the
+  original per-source exceptions for `except*` handling.
+- A local CSV is preferred; a missing CSV is downloaded and saved atomically.
+- Each country database is loaded lazily once, then reused as an in-memory index.
 - Row models are lightweight `TypedDict` types that use the known source CSV headers.
 
 ## Installation
@@ -105,79 +100,67 @@ data/matthewproctor/newzealand_postcodes.csv
 If the environment variable is absent, the default is `data/matthewproctor` relative to the
 current working directory.
 
-For an enterprise image, bake either CSV into that path and configure `download_if_missing=False`.
+For an enterprise image, bake either CSV into that path and pass `download_if_missing=False`.
 
 ## Usage
 
 ```python
-import asyncio
+from matthew_proctor_postcodes_client import lookup_postcode
 
-from matthew_proctor_postcodes_client import (
-    AUSMatthewProctorPostcodesClient,
-    NZLMatthewProctorPostcodesClient,
-)
+aus_entries = lookup_postcode("3004", "AUS")
+nz_entries = lookup_postcode("110", "NZL")
 
-
-async def main() -> None:
-    aus_client = AUSMatthewProctorPostcodesClient()
-    nz_client = NZLMatthewProctorPostcodesClient()
-
-    aus_entries = await aus_client.lookup("3004")
-    nz_entries = await nz_client.lookup("110")
-
-    print([entry["locality"] for entry in aus_entries])
-    print([entry["locality"] for entry in nz_entries])
-
-
-asyncio.run(main())
+print([entry["locality"] for entry in aus_entries])
+print([entry["locality"] for entry in nz_entries])
 ```
 
-## Client Configuration
+## Lookup Options
 
-Concrete clients accept these keyword arguments:
+`lookup_postcode()` accepts these keyword arguments:
 
 - `request_timeout_seconds`: HTTP timeout used when a missing CSV must be downloaded. Defaults to `30.0`.
 - `download_if_missing`: whether to download the source CSV when it is not already present locally. Defaults to `True`.
 
-Storage is configured with `MATTHEW_PROCTOR_DATA_DIR`, not a constructor argument:
+Storage is configured with `MATTHEW_PROCTOR_DATA_DIR`:
 
 ```python
 import os
 
-from matthew_proctor_postcodes_client import AUSMatthewProctorPostcodesClient
+from matthew_proctor_postcodes_client import lookup_postcode
 
 os.environ["MATTHEW_PROCTOR_DATA_DIR"] = "/app/data/matthewproctor"
 
-client = AUSMatthewProctorPostcodesClient(
+entries = lookup_postcode(
+    "3004",
+    "AUS",
     request_timeout_seconds=10.0,
     download_if_missing=False,
 )
 ```
 
-Select the concrete client when the country is only known at runtime:
+Lifecycle options only affect an attempt to load an unloaded database. Once a country database has
+loaded, later calls use the same in-memory index and do not make another request. A failed call with
+`download_if_missing=False` does not poison the database; a later call with downloads enabled may
+still load it.
+
+Exception classes and lower-level helpers are available from their owning modules:
 
 ```python
-from matthew_proctor_postcodes_client import (
-    AUSMatthewProctorPostcodesClient,
-    NZLMatthewProctorPostcodesClient,
-)
-
-client = {
-    "AUS": AUSMatthewProctorPostcodesClient,
-    "NZL": NZLMatthewProctorPostcodesClient,
-}[country]()
+from matthew_proctor_postcodes_client.exceptions import DatasetDownloadError
+from matthew_proctor_postcodes_client.utils import normalize_postcode
 ```
 
-The package also exports `normalize_postcode`, `default_data_dir`, `MatthewProctorDatabaseType`,
-and the package exception classes:
+`DatasetDownloadError` is an `ExceptionGroup`, so callers can either handle the whole download
+failure or selectively handle grouped source failures:
 
 ```python
-from matthew_proctor_postcodes_client import (
-    DatasetFormatError,
-    DatasetUnavailableError,
-    InvalidPostcodeError,
-    normalize_postcode,
-)
+import httpx
+
+try:
+    lookup_postcode("3000", "AUS")
+except* httpx.TimeoutException as errors:
+    for error in errors.exceptions:
+        print(error)
 ```
 
 ## Source Schemas

@@ -1,0 +1,72 @@
+import pytest
+
+import matthew_proctor_postcodes_client as package
+from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
+from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+
+
+class RecordingDatabase:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def lookup(
+        self,
+        postcode: str,
+        *,
+        request_timeout_seconds: float = 30.0,
+        download_if_missing: bool = True,
+    ) -> list[dict[str, object]]:
+        self.calls.append(
+            {
+                "postcode": postcode,
+                "request_timeout_seconds": request_timeout_seconds,
+                "download_if_missing": download_if_missing,
+            }
+        )
+        return [{"postcode": postcode}]
+
+
+def test_lookup_postcode_routes_to_normalized_country(monkeypatch: pytest.MonkeyPatch) -> None:
+    database = RecordingDatabase()
+    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.AUS: database})
+
+    assert package.lookup_postcode("3000", " aus ") == [{"postcode": "3000"}]
+    assert database.calls == [
+        {
+            "postcode": "3000",
+            "request_timeout_seconds": 30.0,
+            "download_if_missing": True,
+        }
+    ]
+
+
+def test_lookup_postcode_forwards_lifecycle_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    database = RecordingDatabase()
+    monkeypatch.setattr(package, "_DATABASES", {MatthewProctorDatabaseType.NZL: database})
+
+    package.lookup_postcode(
+        "110",
+        "NZL",
+        request_timeout_seconds=10.0,
+        download_if_missing=False,
+    )
+
+    assert database.calls == [
+        {
+            "postcode": "110",
+            "request_timeout_seconds": 10.0,
+            "download_if_missing": False,
+        }
+    ]
+
+
+def test_lookup_postcode_rejects_unsupported_country() -> None:
+    with pytest.raises(UnsupportedCountryError):
+        package.lookup_postcode("3000", "USA")
+
+
+def test_package_does_not_export_database_objects() -> None:
+    assert "AUSMatthewProctorPostcodesDatabase" not in package.__all__
+    assert "MatthewProctorPostcodesDatabase" not in package.__all__
+    assert "NZLMatthewProctorPostcodesDatabase" not in package.__all__
+    assert "_DATABASES" not in package.__all__

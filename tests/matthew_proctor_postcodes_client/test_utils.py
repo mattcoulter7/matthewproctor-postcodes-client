@@ -1,6 +1,7 @@
 import pytest
 
-from matthew_proctor_postcodes_client import InvalidPostcodeError, normalize_postcode
+from matthew_proctor_postcodes_client.exceptions import InvalidPostcodeError
+from matthew_proctor_postcodes_client.utils import normalize_postcode
 
 
 def test_normalize_postcode_preserves_leading_zero_postcode() -> None:

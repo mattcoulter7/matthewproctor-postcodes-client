@@ -1,44 +1,56 @@
-"""Typed async access to Matthew Proctor postcode datasets."""
+"""Matthew Proctor postcode lookup API."""
 
-from .clients import (
-    AUSMatthewProctorPostcodesClient,
-    MatthewProctorPostcodesClient,
-    NZLMatthewProctorPostcodesClient,
-    default_data_dir,
+from __future__ import annotations
+
+from typing import Literal, cast, overload
+
+from matthew_proctor_postcodes_client.databases import (
+    AUSMatthewProctorPostcodesDatabase,
+    MatthewProctorPostcodesDatabase,
+    NZLMatthewProctorPostcodesDatabase,
 )
-from .constants import DATA_DIR_ENV_VAR, DEFAULT_DATA_DIR
-from .exceptions import (
-    CountryMismatchError,
-    DatasetFormatError,
-    DatasetUnavailableError,
-    InvalidPostcodeError,
-    MatthewProctorPostcodesError,
-    UnsupportedCountryError,
-)
-from .models import (
+from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
+from matthew_proctor_postcodes_client.models import (
     AUSMatthewProctorPostcodeInfo,
     MatthewProctorDatabaseType,
     MatthewProctorPostcodeInfo,
     NZLMatthewProctorPostcodeInfo,
 )
-from .utils import normalize_postcode
+
+_DATABASES = [
+    AUSMatthewProctorPostcodesDatabase(),
+    NZLMatthewProctorPostcodesDatabase(),
+]
+
+_DATABASES_INDEX = {
+    database.database_type: database
+    for database in _DATABASES
+}
+
+def lookup_postcode(
+    postcode: str,
+    country: str | MatthewProctorDatabaseType,
+    *,
+    request_timeout_seconds: float = 30.0,
+    download_if_missing: bool = True,
+) -> list[MatthewProctorPostcodeInfo]:
+    """Look up postcode rows within a supported alpha-3 country."""
+    try:
+        database_type = MatthewProctorDatabaseType(country.strip().upper())
+        database = _DATABASES_INDEX[database_type]
+    except (ValueError, KeyError) as error:
+        raise UnsupportedCountryError(f"Unsupported postcode country {country!r}.") from error
+
+    return database.lookup(
+        postcode,
+        request_timeout_seconds=request_timeout_seconds,
+        download_if_missing=download_if_missing,
+    )
+
 
 __all__ = [
     "AUSMatthewProctorPostcodeInfo",
-    "AUSMatthewProctorPostcodesClient",
-    "CountryMismatchError",
-    "DATA_DIR_ENV_VAR",
-    "DEFAULT_DATA_DIR",
-    "DatasetFormatError",
-    "DatasetUnavailableError",
-    "InvalidPostcodeError",
-    "MatthewProctorDatabaseType",
     "MatthewProctorPostcodeInfo",
-    "MatthewProctorPostcodesClient",
-    "MatthewProctorPostcodesError",
     "NZLMatthewProctorPostcodeInfo",
-    "NZLMatthewProctorPostcodesClient",
-    "UnsupportedCountryError",
-    "default_data_dir",
-    "normalize_postcode",
+    "lookup_postcode",
 ]

@@ -10,7 +10,7 @@ from .database_type import MatthewProctorDatabaseType
 class AUSMatthewProctorPostcodeInfo(TypedDict, total=False):
     """One row from Matthew Proctor's Australian postcode CSV."""
 
-    # Client-injected source database discriminator.
+    # Database-injected source discriminator.
     database: MatthewProctorDatabaseType
 
     # Primary key from source database.

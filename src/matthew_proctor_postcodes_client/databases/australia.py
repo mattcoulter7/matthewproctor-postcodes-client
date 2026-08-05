@@ -1,14 +1,14 @@
-"""Australian postcode client."""
+"""Australian postcode database."""
 
 from __future__ import annotations
 
-from matthew_proctor_postcodes_client.clients.base import MatthewProctorPostcodesClient
+from matthew_proctor_postcodes_client.databases.base import MatthewProctorPostcodesDatabase
 from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
 from matthew_proctor_postcodes_client.models.australia import AUSMatthewProctorPostcodeInfo
 
 
-class AUSMatthewProctorPostcodesClient(MatthewProctorPostcodesClient[AUSMatthewProctorPostcodeInfo]):
-    """Client for the Australian postcode database."""
+class AUSMatthewProctorPostcodesDatabase(MatthewProctorPostcodesDatabase[AUSMatthewProctorPostcodeInfo]):
+    """Database for Australian postcodes."""
 
     database_type = MatthewProctorDatabaseType.AUS
     database_filename = "australian_postcodes.csv"
@@ -16,4 +16,3 @@ class AUSMatthewProctorPostcodesClient(MatthewProctorPostcodesClient[AUSMatthewP
         "https://www.matthewproctor.com/Content/postcodes/australian_postcodes.csv",
         "https://raw.githubusercontent.com/matthewproctor/australianpostcodes/master/australian_postcodes.csv",
     )
-    postcode_field_name = "postcode"

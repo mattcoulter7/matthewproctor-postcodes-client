@@ -10,7 +10,7 @@ from .database_type import MatthewProctorDatabaseType
 class NZLMatthewProctorPostcodeInfo(TypedDict, total=False):
     """One row from Matthew Proctor's New Zealand postcode CSV."""
 
-    # Client-injected source database discriminator.
+    # Database-injected source discriminator.
     database: MatthewProctorDatabaseType
 
     # Postcode in four-digit numerical format, including leading zeroes.

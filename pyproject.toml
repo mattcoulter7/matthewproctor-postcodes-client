@@ -7,7 +7,6 @@ dev = [
   "debugpy>=1.8.14,<2",
   "isort>=6.0.1,<7",
   "pre-commit>=4.2.0,<5",
-  "pytest-asyncio>=1.0.0,<2",
   "pytest-cov>=6.2.1,<7",
   "pytest>=8.4.1,<9",
   "ruff>=0.12.3,<0.13"
@@ -18,12 +17,10 @@ authors = [
   {email = "mattcoul7@gmail.com", name = "Matt Coulter"}
 ]
 dependencies = [
-    "aiofiles>=24.1.0,<25",
-    "aiocache>=0.12.3,<1",
     "httpx>=0.27,<1",
 ]
 name = "matthew-proctor-postcodes-client"
-description = "Typed async client for Matthew Proctor's Australian and New Zealand postcode datasets."
+description = "Typed lookup API for Matthew Proctor's Australian and New Zealand postcode datasets."
 readme = "README.md"
 requires-python = ">=3.12,<4.0"
 license = { text = "MIT" }
@@ -39,8 +36,6 @@ include = ["src/matthew_proctor_postcodes_client"]
 "src/matthew_proctor_postcodes_client" = "matthew_proctor_postcodes_client"
 
 [tool.pytest.ini_options]
-asyncio_default_fixture_loop_scope = "session"
-asyncio_mode = "auto"
 markers = [
   "integration: Assigns the test to the integration test suite.",
   "regression: Assigns the test to the regression test suite"
