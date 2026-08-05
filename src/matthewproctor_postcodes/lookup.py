@@ -2,12 +2,12 @@
 
 from collections.abc import Sequence
 
-from matthew_proctor_postcodes_client.databases import (
+from matthewproctor_postcodes.databases import (
     AUSMatthewProctorPostcodesDatabase,
     NZLMatthewProctorPostcodesDatabase,
 )
-from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
-from matthew_proctor_postcodes_client.models import (
+from matthewproctor_postcodes.exceptions import UnsupportedCountryError
+from matthewproctor_postcodes.models import (
     MatthewProctorDatabaseType,
     MatthewProctorPostcodeInfo,
 )

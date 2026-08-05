@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from matthew_proctor_postcodes_client.models import (
+from matthewproctor_postcodes.models import (
     AUSMatthewProctorPostcodeInfo,
     MatthewProctorPostcodeInfo,
     NZLMatthewProctorPostcodeInfo,

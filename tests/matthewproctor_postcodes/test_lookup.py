@@ -1,8 +1,8 @@
 import pytest
 
-import matthew_proctor_postcodes_client.lookup as package
-from matthew_proctor_postcodes_client.exceptions import UnsupportedCountryError
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
+import matthewproctor_postcodes.lookup as package
+from matthewproctor_postcodes.exceptions import UnsupportedCountryError
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
 
 
 class RecordingDatabase:

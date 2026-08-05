@@ -1,4 +1,4 @@
-from matthew_proctor_postcodes_client.exceptions import (
+from matthewproctor_postcodes.exceptions import (
     DatasetDownloadError,
     DatasetFormatError,
     DatasetUnavailableError,

@@ -1,4 +1,4 @@
-import matthew_proctor_postcodes_client as package
+import matthewproctor_postcodes as package
 
 
 def test_package_exports_public_api() -> None:

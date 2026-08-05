@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from matthew_proctor_postcodes_client.databases.base import MatthewProctorPostcodesDatabase
-from matthew_proctor_postcodes_client.models import MatthewProctorDatabaseType
-from matthew_proctor_postcodes_client.models.australia import AUSMatthewProctorPostcodeInfo
+from matthewproctor_postcodes.databases.base import MatthewProctorPostcodesDatabase
+from matthewproctor_postcodes.models import MatthewProctorDatabaseType
+from matthewproctor_postcodes.models.australia import AUSMatthewProctorPostcodeInfo
 
 
 class AUSMatthewProctorPostcodesDatabase(MatthewProctorPostcodesDatabase[AUSMatthewProctorPostcodeInfo]):
